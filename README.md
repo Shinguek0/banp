@@ -1,6 +1,8 @@
-# banp
+# Banp refractoring
 
 Projeto de Clean Code, refatorando um projeto antigo
+
+Grupo: ```Vinicius Albino``` e ```Vitor Minatto```
 
 ---
 
