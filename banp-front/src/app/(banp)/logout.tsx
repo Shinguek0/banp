@@ -1,21 +1,18 @@
-import { useAuth } from '@/hooks/useAuth';
-import { router } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth'; import { router } from 'expo-router';
 import { useEffect } from 'react';
+// Constants
+const SIGN_IN_ROUTE = '/(getStarted)/signIn';
 
 const Logout = () => {
   const { handleSignOut } = useAuth();
-
   useEffect(() => {
-    const signOut = async () => {
+    const performSignOut = async () => {
       await handleSignOut();
-
-      router.push('/(getStarted)/signIn');
+      router.push(SIGN_IN_ROUTE);
     };
-
-    signOut();
+    performSignOut();
   }, []);
-
   return null;
 };
-
 export default Logout;
+

@@ -7,7 +7,7 @@ services:
     restart: always
     working_dir: /app
     # network_mode: "host" use em linux
-    network_mode: 'host'
+    # network_mode: 'host'
     volumes:
       - ./:/app
 
@@ -18,10 +18,10 @@ services:
     container_name: banp-database
     image: postgres
     restart: always
-    network_mode: 'host'
+    # network_mode: 'host'
     shm_size: 1g
-    # ports:
-    #   - 5432:5432
+    ports:
+      - 5432:5432
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_USER: postgres

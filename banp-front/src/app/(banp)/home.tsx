@@ -8,47 +8,261 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Home = () => {
+// Constants
+const RECOMMENDATIONS_PER_PAGE = 5;
+const PHOTO_SIZE = 200;
+const ICON_SIZE = 24;
+const LARGE_ICON_SIZE = 128;
+const THUMB_SIZE = 64;
+const GLOW_DURATION = {
+  IN: 600,
+  OUT: 500
+};
+const SHADOW_RANGE = {
+  MIN: 5,
+  MAX: 30
+};
+const OPACITY_RANGE = {
+  MIN: 0.3,
+  MAX: 1
+};
+
+// Interfaces
+interface ActionButtonProps {
+  onPress: () => void;
+  icon: string;
+  color: string;
+  backgroundColor: string;
+  borderColor: string;
+}
+
+interface UserProfileProps {
+  person: Recommendation;
+  glowAnim: Animated.Value;
+}
+
+interface NoContentProps {
+  message: string;
+}
+
+// Custom Hooks
+const useAuth = () => {
+  const getToken = async (): Promise<string | null> => {
+    return await AsyncStorage.getItem('@banp:token');
+  };
+
+  return { getToken };
+};
+
+const useRecommendations = () => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [recommendationIndex, setRecommendationIndex] = useState(0);
   const [page, setPage] = useState(1);
+  const { getToken } = useAuth();
 
-  const person = recommendations[recommendationIndex];
+  const fetchRecommendations = async (pageNumber: number) => {
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('No token found');
 
+      const { data } = await api.get('/match/recommendation', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          take: RECOMMENDATIONS_PER_PAGE,
+          page: pageNumber
+        }
+      });
+
+      setRecommendations(data);
+    } catch (error: any) {
+      console.log('Failed to fetch recommendations:', error.response?.data?.message || error.message);
+    }
+  };
+
+  const nextRecommendation = () => {
+    if (recommendationIndex < recommendations.length - 1) {
+      setRecommendationIndex(prev => prev + 1);
+    } else {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      setRecommendationIndex(0);
+    }
+  };
+
+  return {
+    recommendations,
+    recommendationIndex,
+    page,
+    fetchRecommendations,
+    nextRecommendation,
+    currentPerson: recommendations[recommendationIndex]
+  };
+};
+
+const useGlowAnimation = () => {
   const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const startGlowing = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: GLOW_DURATION.IN,
+          useNativeDriver: false
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: GLOW_DURATION.OUT,
+          useNativeDriver: false
+        })
+      ])
+    ).start();
+  };
+
+  const shadowRadius = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SHADOW_RANGE.MIN, SHADOW_RANGE.MAX]
+  });
+
+  const shadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [OPACITY_RANGE.MIN, OPACITY_RANGE.MAX]
+  });
+
+  return { glowAnim, startGlowing, shadowRadius, shadowOpacity };
+};
+
+// Components
+const ActionButton: React.FC<ActionButtonProps> = ({ 
+  onPress, 
+  icon, 
+  color, 
+  backgroundColor, 
+  borderColor 
+}) => (
+  <TouchableOpacity
+    style={[
+      styles.thumbContainer,
+      { backgroundColor, borderColor }
+    ]}
+    onPress={onPress}
+  >
+    <Feather name={icon} size={ICON_SIZE} color={color} />
+  </TouchableOpacity>
+);
+
+const UserProfile: React.FC<UserProfileProps> = ({ person, glowAnim }) => {
+  const shadowRadius = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SHADOW_RANGE.MIN, SHADOW_RANGE.MAX]
+  });
+
+  const shadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [OPACITY_RANGE.MIN, OPACITY_RANGE.MAX]
+  });
+
+  const genderText = person.gender === 'M' ? 'Male' : 'Female';
+  const age = calculateAge(person.birthDate);
+
+  return (
+    <View style={styles.header}>
+      <Animated.View
+        style={[
+          styles.photoContainer,
+          {
+            shadowRadius,
+            shadowOpacity,
+            shadowColor: theme.colors.primary[300],
+            shadowOffset: { width: 0, height: 0 },
+            ...Platform.select({
+              android: {
+                elevation: glowAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [SHADOW_RANGE.MIN, SHADOW_RANGE.MAX]
+                })
+              }
+            })
+          }
+        ]}
+      >
+        <Image style={styles.photo} source={{ uri: person.image }} />
+      </Animated.View>
+      <Text style={styles.displayName}>{person.name}</Text>
+      <Text style={styles.text}>{genderText} · {age}yo</Text>
+      <View style={styles.games}>
+        {person.games.map(({ id, name }) => (
+          <Text key={id} style={styles.gameTag}>
+            {name}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const ActionButtons: React.FC<{ onLike: () => void; onDislike: () => void }> = ({ 
+  onLike, 
+  onDislike 
+}) => (
+  <View style={styles.action}>
+    <ActionButton
+      onPress={onDislike}
+      icon="thumbs-down"
+      color={theme.colors.functional.error.main}
+      backgroundColor={theme.colors.functional.error.bg}
+      borderColor={theme.colors.functional.error.main}
+    />
+    <ActionButton
+      onPress={onLike}
+      icon="thumbs-up"
+      color={theme.colors.functional.success.main}
+      backgroundColor={theme.colors.functional.success.bg}
+      borderColor={theme.colors.functional.success.main}
+    />
+  </View>
+);
+
+const NoContent: React.FC<NoContentProps> = ({ message }) => (
+  <View style={styles.noContent}>
+    <Feather
+      name="frown"
+      size={LARGE_ICON_SIZE}
+      color={theme.colors.neutral[500]}
+    />
+    <Text style={styles.noContentText}>{message}</Text>
+  </View>
+);
+
+const Home = () => {
+  const {
+    recommendations,
+    currentPerson,
+    page,
+    fetchRecommendations,
+    nextRecommendation
+  } = useRecommendations();
+
+  const { glowAnim, startGlowing } = useGlowAnimation();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     startGlowing();
   }, []);
 
   useEffect(() => {
-    const getRecommendations = async () => {
-      try {
-        const token = await AsyncStorage.getItem('@banp:token');
-
-        const { data } = await api.get('/match/recommendation', {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            take: 5,
-            page: page
-          }
-        });
-
-        setRecommendations(data);
-      } catch (error: any) {
-        console.log(error.response.data.message);
-      }
-    };
-
-    getRecommendations();
+    fetchRecommendations(page);
   }, [page]);
 
   const handleLikeOrDislike = async (like: boolean) => {
+    if (!currentPerson) return;
+
     try {
-      const token = await AsyncStorage.getItem('@banp:token');
+      const token = await getToken();
+      if (!token) throw new Error('No token found');
 
       const { data } = await api.post(
-        `/match/${person.id}`,
+        `/match/${currentPerson.id}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -62,125 +276,28 @@ const Home = () => {
         return Alert.alert('Congratulations!', 'You have a new match to play!');
       }
 
-      if (recommendationIndex < recommendations.length - 1) {
-        setRecommendationIndex(recommendationIndex + 1);
-      } else {
-        setPage(page + 1);
-        setRecommendationIndex(0);
-      }
+      nextRecommendation();
     } catch (error: any) {
-      console.error(error.response.data.message);
+      console.error('Match action failed:', error.response?.data?.message || error.message);
     }
   };
 
-  const startGlowing = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: false // We can't use native driver for shadow properties
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: false
-        })
-      ])
-    ).start();
-  };
-
-  const shadowRadius = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [5, 30] // Radius of the glow effect
-  });
-
-  const shadowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 1] // Opacity of the glow effect
-  });
+  const hasRecommendations = recommendations.length > 0;
+  const noContentMessage = "No more recommendations for now.\nCheck back later!";
 
   return (
     <SafeAreaView style={styles.container}>
-      {recommendations.length > 0 && (
-        <View style={styles.header}>
-          <Animated.View
-            style={[
-              styles.photoContainer,
-              {
-                shadowRadius,
-                shadowOpacity,
-                shadowColor: theme.colors.primary[300],
-                shadowOffset: { width: 0, height: 0 }, // Adjust the shadow offset
-                ...Platform.select({
-                  android: {
-                    elevation: glowAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [5, 30]
-                    })
-                  }
-                })
-              }
-            ]}
-          >
-            <Image
-              style={styles.photo}
-              source={{
-                uri: person.image
-              }}
-            />
-          </Animated.View>
-          <Text style={styles.displayName}>{person.name}</Text>
-          <Text style={styles.text}>
-            {person.gender === 'M' ? 'Male' : 'Female'} · {calculateAge(person.birthDate)}yo
-          </Text>
-          <View style={styles.games}>
-            {person.games.map(({ id, name }) => (
-              <Text
-                key={id}
-                style={styles.gameTag}
-              >
-                {name}
-              </Text>
-            ))}
-          </View>
-        </View>
-      )}
-      {recommendations.length > 0 && (
-        <View style={styles.action}>
-          <TouchableOpacity
-            style={[styles.thumbContainer, styles.thumbsDown]}
-            onPress={() => handleLikeOrDislike(false)}
-          >
-            <Feather
-              name="thumbs-down"
-              size={24}
-              color={theme.colors.functional.error.main}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.thumbContainer, styles.thumbsUp]}
-            onPress={() => handleLikeOrDislike(true)}
-          >
-            <Feather
-              name="thumbs-up"
-              size={24}
-              color={theme.colors.functional.success.main}
-            />
-          </TouchableOpacity>
-        </View>
+      {hasRecommendations && currentPerson && (
+        <>
+          <UserProfile person={currentPerson} glowAnim={glowAnim} />
+          <ActionButtons
+            onLike={() => handleLikeOrDislike(true)}
+            onDislike={() => handleLikeOrDislike(false)}
+          />
+        </>
       )}
 
-      {recommendations.length === 0 && (
-        <View style={styles.noContent}>
-          <Feather
-            name="frown"
-            size={128}
-            color={theme.colors.neutral[500]}
-          />
-          <Text style={styles.noContentText}>No more recommendations for now.{'\n'} Check back later!</Text>
-        </View>
-      )}
+      {!hasRecommendations && <NoContent message={noContentMessage} />}
     </SafeAreaView>
   );
 };
@@ -201,16 +318,16 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   photoContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: PHOTO_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center'
   },
   photo: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: PHOTO_SIZE / 2,
     borderWidth: 4,
     borderColor: theme.colors.primary[200]
   },
@@ -241,20 +358,11 @@ const styles = StyleSheet.create({
     gap: 96
   },
   thumbContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
     justifyContent: 'center',
-    alignItems: 'center'
-  },
-  thumbsUp: {
-    backgroundColor: theme.colors.functional.success.bg,
-    borderColor: theme.colors.functional.success.main,
-    borderWidth: 2
-  },
-  thumbsDown: {
-    backgroundColor: theme.colors.functional.error.bg,
-    borderColor: theme.colors.functional.error.main,
+    alignItems: 'center',
     borderWidth: 2
   },
   noContent: {

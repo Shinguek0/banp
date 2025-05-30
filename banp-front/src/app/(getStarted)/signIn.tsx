@@ -12,25 +12,46 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { theme } from '@/styles/theme';
 
+// Constants
+const LOGO_SIZE = 42;
+
+const TEXT = {
+  welcome: 'Welcome Back!',
+  subtitle: 'Please sign in with your credentials',
+  email: 'Email',
+  password: 'Password',
+  signIn: 'Sign in',
+  or: 'or',
+  googleSignInSoon: 'Sign in with Google (coming soon)',
+  noAccount: 'Don’t have an account?',
+  signUp: 'Sign up'
+};
+
+const ROUTES = {
+  home: '/(banp)/home',
+  setup: '/(setup)/index',
+  signUp: '/signUp'
+};
+
 const SignIn = () => {
   const [loading, setLoading] = useState(false);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const { handleSignInWithEmail } = useAuth();
   const insets = useSafeAreaInsets();
-
   const passwordRef = useRef<TextInput>(null);
+
+  const navigateAfterSignIn = (response: any) => {
+    if (response?.have_account) return router.push(ROUTES.home);
+    if (response?.have_account === false) return router.push(ROUTES.setup);
+  };
 
   const handleSignIn = async () => {
     try {
       setLoading(true);
       const response = await handleSignInWithEmail({ email, password });
-
-      if (response?.have_account) return router.push('/(banp)/home');
-
-      if (response?.have_account === false) return router.push('/(setup)/index');
+      navigateAfterSignIn(response);
     } catch (error) {
       console.error(error);
     } finally {
@@ -40,82 +61,61 @@ const SignIn = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Spinner
-        visible={loading}
-        color={theme.colors.primary[300]}
-      />
-      <View
-        style={[
-          styles.backButton,
-          {
-            top: insets.top + 24,
-            left: insets.left + 16
-          }
-        ]}
-      >
+      <Spinner visible={loading} color={theme.colors.primary[300]} />
+
+      <View style={[styles.backButton, { top: insets.top + 24, left: insets.left + 16 }]}>
         <Button.Back onPress={router.back} />
       </View>
+
       <View style={styles.header}>
-        <Logo
-          width={42}
-          height={42}
-          style={styles.logo}
-        />
-        <Text style={styles.title}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>Please sign in with your credentials</Text>
+        <Logo width={LOGO_SIZE} height={LOGO_SIZE} style={styles.logo} />
+        <Text style={styles.title}>{TEXT.welcome}</Text>
+        <Text style={styles.subtitle}>{TEXT.subtitle}</Text>
       </View>
+
       <View style={styles.centerInfo}>
         <View style={styles.form}>
           <Input.Text
-            placeholder="Email"
+            placeholder={TEXT.email}
             icon="at-sign"
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             blurOnSubmit={false}
             value={email}
-            onChangeText={(text) => setEmail(text)}
+            onChangeText={setEmail}
           />
           <Input.Text
-            placeholder="Password"
+            placeholder={TEXT.password}
             icon="lock"
-            secureTextEntry={true}
+            secureTextEntry
             autoCorrect={false}
             returnKeyType="done"
             value={password}
-            onChangeText={(text) => setPassword(text)}
+            onChangeText={setPassword}
             ref={passwordRef}
           />
-          <Button onPress={handleSignIn}>Sign in</Button>
+          <Button onPress={handleSignIn}>{TEXT.signIn}</Button>
         </View>
+
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
+          <Text style={styles.dividerText}>{TEXT.or}</Text>
           <View style={styles.dividerLine} />
         </View>
+
         <View>
-          <Button
-            type="custom"
-            style={styles.googleButton}
-            disabled // until fix google auth
-            // onPress={handleSignWithGoogle}
-          >
-            <AntDesign
-              name="google"
-              size={24}
-              color={theme.colors.neutral[200]}
-            />
-            <Text style={styles.googleButtonText}>Sign in with Google (coming soon)</Text>
+          <Button type="custom" style={styles.googleButton} disabled>
+            <AntDesign name="google" size={24} color={theme.colors.neutral[200]} />
+            <Text style={styles.googleButtonText}>{TEXT.googleSignInSoon}</Text>
           </Button>
         </View>
       </View>
+
       <View>
         <Text style={styles.signUp}>
-          Don’t have an account?{' '}
-          <Link
-            href="/signUp"
-            style={styles.link}
-          >
-            Sign up
+          {TEXT.noAccount}{' '}
+          <Link href={ROUTES.signUp} style={styles.link}>
+            {TEXT.signUp}
           </Link>
         </Text>
       </View>

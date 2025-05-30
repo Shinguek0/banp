@@ -59,16 +59,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // });
   const [user, setUser] = useState<User>({} as User);
 
-  // useEffect(() => {
-  //   if (response?.type === 'success') {
-  //     const { id_token } = response.params;
-  //     const credential = GoogleAuthProvider.credential(id_token);
-
-  //     signInWithCredential(auth, credential).then((userCredential) => {
-  //       setUser(userCredential.user);
-  //     });
-  //   }
-  // }, [response]);
 
   const handleSignInWithEmail = async ({ email, password }: EmailCredentials) => {
     if (!email || !password) return Alert.alert('Error', 'Please fill in all fields.');
@@ -88,6 +78,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     }
   };
+
+  /**const handleSignInWithEmail = async ({ email, password }: EmailCredentials) => {
+  try {
+    const response = await signInWithEmailAndPassword(auth, email, password);
+    setUser(response.user);
+
+    Alert.alert('Success', 'Login realizado!');
+  } catch (error) {
+    if (error instanceof FirebaseError) {
+      Alert.alert(defaultErrorMessage(error.code), error.message);
+    }
+  }
+};**/
+
 
   const handleSignUpWithEmail = async ({ email, password }: EmailCredentials) => {
     if (!email || !password) return Alert.alert('Error', 'Please fill in all fields.');

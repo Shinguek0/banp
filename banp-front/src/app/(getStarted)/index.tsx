@@ -1,25 +1,119 @@
 import React from 'react';
 import { ImageBackground, ImageSourcePropType, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-
 import { Button } from '@/components/Button';
 import { theme } from '@/styles/theme';
-
 import { useFonts, Viga_400Regular } from '@expo-google-fonts/viga';
-
 import Logo from '@/assets/logo.svg';
 
-const GetStarted = () => {
-  const backgroundImg: ImageSourcePropType = require('@/assets/images/get-started-background.png');
+// Constants
+const LOGO_SIZE = 42;
+const GRADIENT_OVERLAY_HEIGHT = '60%';
+const ROUTES = {
+  SIGN_UP: '/signUp',
+  SIGN_IN: '/signIn'
+} as const;
 
-  let [fontsLoaded, fontError] = useFonts({
+const GRADIENT_COLORS = ['#FFFFFF00', '#000'] as const;
+
+const APP_TEXT = {
+  LOGO: 'Banp!',
+  SLOGAN: 'Best place to find your duo or team.',
+  GET_STARTED: 'Get Started',
+  ALREADY_HAVE_ACCOUNT: 'Already have an account? ',
+  SIGN_IN: 'Sign in'
+} as const;
+
+// Interfaces
+interface LogoSectionProps {
+  logoText: string;
+}
+
+interface MainContentProps {
+  slogan: string;
+  onGetStarted: () => void;
+}
+
+interface LoaderProps {
+  isLoading: boolean;
+  hasError: boolean;
+}
+
+// Custom Hooks
+const useFontLoader = () => {
+  const [fontsLoaded, fontError] = useFonts({
     Viga: Viga_400Regular
   });
 
-  if (!fontsLoaded && !fontError) {
-    return null;
+  const isReady = fontsLoaded || fontError;
+  const shouldShowLoader = !isReady;
+
+  return { shouldShowLoader, hasError: !!fontError };
+};
+
+const useNavigation = () => {
+  const navigateToSignUp = () => {
+    router.push(ROUTES.SIGN_UP);
+  };
+
+  return { navigateToSignUp };
+};
+
+// Components
+const Loader: React.FC<LoaderProps> = ({ isLoading, hasError }) => {
+  if (!isLoading) return null;
+  
+  // Could add a proper loading spinner here
+  return null;
+};
+
+const LogoSection: React.FC<LogoSectionProps> = ({ logoText }) => (
+  <View style={styles.logoContainer}>
+    <Logo width={LOGO_SIZE} height={LOGO_SIZE} />
+    <Text style={styles.logoText}>{logoText}</Text>
+  </View>
+);
+
+const MainContent: React.FC<MainContentProps> = ({ slogan, onGetStarted }) => (
+  <View style={styles.mainContent}>
+    <Text style={styles.slogan}>{slogan}</Text>
+    <Button onPress={onGetStarted}>
+      {APP_TEXT.GET_STARTED}
+    </Button>
+    <Text style={styles.signIn}>
+      {APP_TEXT.ALREADY_HAVE_ACCOUNT}
+      <Link href={ROUTES.SIGN_IN} style={styles.link}>
+        <Text>{APP_TEXT.SIGN_IN}</Text>
+      </Link>
+    </Text>
+  </View>
+);
+
+const BackgroundOverlay: React.FC = () => (
+  <LinearGradient
+    colors={GRADIENT_COLORS}
+    style={styles.overlay}
+  />
+);
+
+const ContentSection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => (
+  <View style={styles.content}>
+    <LogoSection logoText={APP_TEXT.LOGO} />
+    <MainContent 
+      slogan={APP_TEXT.SLOGAN} 
+      onGetStarted={onGetStarted} 
+    />
+  </View>
+);
+
+const GetStarted = () => {
+  const backgroundImg: ImageSourcePropType = require('@/assets/images/get-started-background.png');
+  const { shouldShowLoader, hasError } = useFontLoader();
+  const { navigateToSignUp } = useNavigation();
+
+  if (shouldShowLoader) {
+    return <Loader isLoading={true} hasError={hasError} />;
   }
 
   return (
@@ -29,39 +123,9 @@ const GetStarted = () => {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <Logo
-              width={42}
-              height={42}
-            />
-            <Text style={styles.logoText}>Banp!</Text>
-          </View>
-          <View style={styles.mainContent}>
-            <Text style={styles.slogan}>Best place to find your duo or team.</Text>
-            <Button onPress={() => router.push('/signUp')}>Get Started</Button>
-            {/* <Button
-              type="error"
-              onPress={() => router.push('/_sitemap')}
-            >
-              GO TO SITEMAP
-            </Button> */}
-            <Text style={styles.signIn}>
-              Already have an account?{' '}
-              <Link
-                href="/signIn"
-                style={styles.link}
-              >
-                <Text>Sign in</Text>
-              </Link>
-            </Text>
-          </View>
-        </View>
+        <ContentSection onGetStarted={navigateToSignUp} />
       </SafeAreaView>
-      <LinearGradient
-        colors={['#FFFFFF00', '#000']}
-        style={styles.overlay}
-      />
+      <BackgroundOverlay />
     </ImageBackground>
   );
 };
@@ -83,7 +147,8 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
+    alignItems: 'center'
   },
   logoText: {
     fontFamily: 'Viga',
@@ -98,22 +163,23 @@ const styles = StyleSheet.create({
   slogan: {
     fontSize: 16,
     marginBottom: 13,
-    color: theme.colors.neutral[100]
+    color: theme.colors.neutral[100],
+    textAlign: 'center'
   },
   signIn: {
     fontSize: 16,
-    color: theme.colors.neutral[100]
+    color: theme.colors.neutral[100],
+    textAlign: 'center'
   },
   link: {
     fontSize: 16,
-    marginBottom: 20,
     color: theme.colors.primary[300],
     textDecorationLine: 'underline'
   },
   overlay: {
     position: 'absolute',
     width: '100%',
-    height: '60%',
+    height: GRADIENT_OVERLAY_HEIGHT,
     bottom: 0,
     left: 0,
     right: 0,
