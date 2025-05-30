@@ -94,6 +94,26 @@ Este projeto usa **ESLint** e **Prettier** para manter a padronização e qualid
 
 ---
 
+# Suggestão de uso da interface fluente
+
+No arquivo `front/src/app/(banp)/home.tsx` 
+
+Poderia ser implementada uma interface fluente no trecho de codigo
+``` 
+// Em vez de:
+Animated.timing(glowAnim, {
+  toValue: 1,
+  duration: GLOW_DURATION.IN,
+  useNativeDriver: false
+})
+
+// Poderia ser:
+AnimationBuilder.create(glowAnim)
+  .to(1)
+  .duration(GLOW_DURATION.IN)
+  .withoutNativeDriver()
+  .build()
+```
 ---
 
 ### **1. Metodo com muitas responsabilidades**
