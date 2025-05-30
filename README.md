@@ -8,6 +8,94 @@ Repositorio: https://github.com/Shinguek0/banp
 
 ---
 
+# 🛠️ Requisitos e Como Rodar o Projeto
+
+Este projeto possui um **back-end** (rodando em Node.js + Docker) e um **front-end** (rodando com Expo).  
+Além disso, o repositório já está integrado com **ESLint** e **Prettier** para manter a qualidade do código.
+
+---
+
+## ✅ Pré-requisitos
+
+- [Node.js](https://nodejs.org/) instalado (recomendado: versão 18 ou superior).
+- [Docker Desktop](https://www.docker.com/) instalado e com **login no Docker Hub**.
+- [npm](https://www.npmjs.com/) ou [yarn](https://yarnpkg.com/) para gerenciar dependências.
+
+---
+
+## 🐳 Como Rodar o Back-end
+
+1. Abra o terminal e navegue até o diretório do back-end:
+
+    ```
+    cd backend
+    ```
+
+2. Inicie os serviços do Docker:
+
+    ```
+    docker compose up
+    ```
+
+    💡 **Observação:**  
+    Para isso, o Docker Desktop precisa estar rodando e você deve estar logado no Docker Hub.
+
+3. Instale as dependências do Node:
+
+    ```
+    npm install
+    ```
+
+4. Inicie o back-end em modo desenvolvimento:
+
+    ```
+    npm run start:dev
+    ```
+
+---
+
+## 📱 Como Rodar o Front-end
+
+1. Abra o terminal e navegue até o diretório do front-end:
+
+    ```
+    cd frontend
+    ```
+
+2. Instale as dependências:
+
+    ```
+    npm install
+    ```
+
+3. Inicie o Expo:
+
+    ```
+    npx expo start
+    ```
+
+---
+
+## 🎨 ESLint + Prettier
+
+Este projeto usa **ESLint** e **Prettier** para manter a padronização e qualidade do código.
+
+- Para rodar o ESLint localmente e ver erros:
+
+    ```
+    npx eslint .
+    ```
+
+- Para rodar o Prettier e formatar o projeto:
+
+    ```
+    npx prettier --write .
+    ```
+
+---
+
+---
+
 ### **1. Metodo com muitas responsabilidades**
 
 * **Exemplo**: `src/app/(setup)/profile.tsx`
