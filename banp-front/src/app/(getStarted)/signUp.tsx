@@ -12,6 +12,29 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { theme } from '@/styles/theme';
 
+// Constants
+const LOGO_SIZE = 42;
+
+const TEXT = {
+  title: 'Create new account',
+  subtitle: 'Get in touch with gamers around you, all for free.',
+  email: 'Email',
+  password: 'Password',
+  confirmPassword: 'Confirm password',
+  signUp: 'Sign up',
+  or: 'or',
+  googleSignUpSoon: 'Sign up with Google (coming soon)',
+  alreadyAccount: 'Already have an account?',
+  signIn: 'Sign in',
+  passwordMismatch: 'Passwords do not match',
+  passwordMismatchMsg: 'Please make sure your passwords match.'
+};
+
+const ROUTES = {
+  setup: '/(setup)',
+  signIn: '/signIn'
+};
+
 const SignUp = () => {
   const [loading, setLoading] = useState(false);
 
@@ -25,18 +48,24 @@ const SignUp = () => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
+  const handlePasswordMismatch = () => {
+    Alert.alert(TEXT.passwordMismatch, TEXT.passwordMismatchMsg);
+  };
+
+  const navigateToSetup = () => {
+    router.push(ROUTES.setup);
+  };
+
   const handleSignUp = async () => {
     if (password !== confirmPassword || !confirmPassword) {
-      // Show error message
-      return Alert.alert('Passwords do not match', 'Please make sure your passwords match.');
+      return handlePasswordMismatch();
     }
 
     try {
       setLoading(true);
       const response = await handleSignUpWithEmail({ email, password });
       console.log(response);
-
-      return router.push('/(setup)');
+      navigateToSetup();
     } catch (error) {
       console.error(error);
     } finally {
@@ -46,97 +75,76 @@ const SignUp = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Spinner
-        visible={loading}
-        color={theme.colors.primary[300]}
-      />
-      <View
-        style={[
-          styles.backButton,
-          {
-            top: insets.top + 24,
-            left: insets.left + 16
-          }
-        ]}
-      >
+      <Spinner visible={loading} color={theme.colors.primary[300]} />
+
+      <View style={[styles.backButton, { top: insets.top + 24, left: insets.left + 16 }]}>
         <Button.Back onPress={router.back} />
       </View>
+
       <View style={styles.header}>
-        <Logo
-          width={42}
-          height={42}
-          style={styles.logo}
-        />
-        <Text style={styles.title}>Create new account</Text>
+        <Logo width={LOGO_SIZE} height={LOGO_SIZE} style={styles.logo} />
+        <Text style={styles.title}>{TEXT.title}</Text>
         <Text style={styles.subtitle}>
-          Get in touch with gamers around you, {'\n'} <Text style={styles.boldText}>all for free.</Text>
+          {TEXT.subtitle.split(', ')[0]},{'\n'} <Text style={styles.boldText}>{TEXT.subtitle.split(', ')[1]}</Text>
         </Text>
       </View>
+
       <View style={styles.centerInfo}>
         <View style={styles.form}>
           <Input.Text
-            placeholder="Email"
+            placeholder={TEXT.email}
             icon="at-sign"
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             blurOnSubmit={false}
             value={email}
-            onChangeText={(text) => setEmail(text)}
+            onChangeText={setEmail}
           />
           <Input.Text
-            placeholder="Password"
+            placeholder={TEXT.password}
             icon="lock"
-            secureTextEntry={true}
+            secureTextEntry
             autoCorrect={false}
             returnKeyType="next"
             onSubmitEditing={() => confirmPasswordRef.current?.focus()}
             blurOnSubmit={false}
             value={password}
-            onChangeText={(text) => setPassword(text)}
+            onChangeText={setPassword}
             ref={passwordRef}
           />
           <Input.Text
-            placeholder="Confirm password"
+            placeholder={TEXT.confirmPassword}
             icon="alert-circle"
-            secureTextEntry={true}
+            secureTextEntry
             autoCorrect={false}
             returnKeyType="done"
             value={confirmPassword}
-            onChangeText={(text) => setConfirmPassword(text)}
+            onChangeText={setConfirmPassword}
             style={{ marginBottom: 24 }}
             ref={confirmPasswordRef}
           />
-          <Button onPress={handleSignUp}>Sign up</Button>
+          <Button onPress={handleSignUp}>{TEXT.signUp}</Button>
         </View>
+
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
+          <Text style={styles.dividerText}>{TEXT.or}</Text>
           <View style={styles.dividerLine} />
         </View>
+
         <View>
-          <Button
-            type="custom"
-            style={styles.googleButton}
-            disabled // until fix google auth
-            // onPress={handleSignWithGoogle}
-          >
-            <AntDesign
-              name="google"
-              size={24}
-              color={theme.colors.neutral[200]}
-            />
-            <Text style={styles.googleButtonText}>Sign up with Google (coming soon)</Text>
+          <Button type="custom" style={styles.googleButton} disabled>
+            <AntDesign name="google" size={24} color={theme.colors.neutral[200]} />
+            <Text style={styles.googleButtonText}>{TEXT.googleSignUpSoon}</Text>
           </Button>
         </View>
       </View>
+
       <View>
         <Text style={styles.signIn}>
-          Already have an account?{' '}
-          <Link
-            href="/signIn"
-            style={styles.link}
-          >
-            Sign in
+          {TEXT.alreadyAccount}{' '}
+          <Link href={ROUTES.signIn} style={styles.link}>
+            {TEXT.signIn}
           </Link>
         </Text>
       </View>

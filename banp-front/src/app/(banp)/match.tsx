@@ -12,88 +12,184 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
 
-const Match = () => {
+// Constants
+const MATCHES_PER_PAGE = 10;
+const INITIAL_PAGE = 1;
+const ICON_SIZE = 20;
+const PHOTO_SIZE = 60;
+const DISCORD_BUTTON_RADIUS = 999;
+const MATCH_BORDER_RADIUS = 12;
+
+// Toast messages
+const TOAST_MESSAGES = {
+  COPY_SUCCESS: {
+    text1: 'Copied to clipboard!',
+    text2: 'Now you can paste it on Discord.'
+  }
+};
+
+// Interfaces
+interface MatchItemProps {
+  match: IMatch;
+  onCopyDiscord: (discordName: string) => void;
+}
+
+interface SearchHeaderProps {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+}
+
+interface EmptyStateProps {
+  message: string;
+}
+
+// Custom Hooks
+const useAuth = () => {
+  const getToken = async (): Promise<string | null> => {
+    return await AsyncStorage.getItem('@banp:token');
+  };
+
+  return { getToken };
+};
+
+const useMatches = () => {
   const [matches, setMatches] = useState<IMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { getToken } = useAuth();
+
+  const fetchMatches = async () => {
+    setIsLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('No token found');
+
+      const { data } = await api.get('/match', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          take: MATCHES_PER_PAGE,
+          page: INITIAL_PAGE
+        }
+      });
+
+      setMatches(data);
+    } catch (error: any) {
+      console.error('Failed to fetch matches:', error.response?.data?.message || error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { matches, isLoading, fetchMatches };
+};
+
+const useSearch = (matches: IMatch[]) => {
   const [search, setSearch] = useState('');
 
-  const filteredMatches = matches.filter((match) => match.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredMatches = matches.filter((match) => 
+    match.name.toLowerCase().includes(search.toLowerCase())
+  );
 
-  useEffect(() => {
-    const getMatches = async () => {
-      try {
-        const token = await AsyncStorage.getItem('@banp:token');
+  return { search, setSearch, filteredMatches };
+};
 
-        const { data } = await api.get('/match', {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            take: 10,
-            page: 1
-          }
-        });
+const useClipboard = () => {
+  const copyToClipboard = async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      showSuccessToast();
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
 
-        setMatches(data);
-      } catch (error: any) {
-        console.log(error.response.data.message);
-      }
-    };
-
-    getMatches();
-  }, []);
-
-  const copyDiscordName = async (name: string) => {
-    await Clipboard.setStringAsync(name);
-
+  const showSuccessToast = () => {
     Toast.show({
       type: 'custom',
-      text1: 'Copied to clipboard!',
-      text2: 'Now you can paste it on Discord.'
+      ...TOAST_MESSAGES.COPY_SUCCESS
     });
   };
 
+  return { copyToClipboard };
+};
+
+// Components
+const EmptyState: React.FC<EmptyStateProps> = ({ message }) => (
+  <Text style={styles.noContent}>{message}</Text>
+);
+
+const SearchHeader: React.FC<SearchHeaderProps> = ({ searchValue, onSearchChange }) => (
+  <View style={styles.search}>
+    <Input.Text
+      placeholder="Search for a match"
+      icon="search"
+      value={searchValue}
+      onChangeText={onSearchChange}
+    />
+  </View>
+);
+
+const MatchItem: React.FC<MatchItemProps> = ({ match, onCopyDiscord }) => (
+  <View style={styles.match}>
+    <View style={styles.info}>
+      <Image
+        source={{ uri: match.image }}
+        style={styles.photo}
+      />
+      <View style={styles.textInfo}>
+        <Text style={styles.name}>{match.name}</Text>
+        <Text style={styles.text}>{match.email}</Text>
+      </View>
+    </View>
+    <TouchableOpacity
+      style={styles.discord}
+      onPress={() => onCopyDiscord(match.discord)}
+    >
+      <FontAwesome6
+        name="discord"
+        size={ICON_SIZE}
+        color={theme.colors.neutral[100]}
+      />
+    </TouchableOpacity>
+  </View>
+);
+
+const PageHeader: React.FC = () => (
+  <View style={styles.header}>
+    <Text style={styles.title}>Matches</Text>
+  </View>
+);
+
+const Match = () => {
+  const { matches, fetchMatches } = useMatches();
+  const { search, setSearch, filteredMatches } = useSearch(matches);
+  const { copyToClipboard } = useClipboard();
+
+  useEffect(() => {
+    fetchMatches();
+  }, []);
+
+  const handleCopyDiscord = (discordName: string) => {
+    copyToClipboard(discordName);
+  };
+
+  const renderMatchItem = ({ item }: { item: IMatch }) => (
+    <MatchItem match={item} onCopyDiscord={handleCopyDiscord} />
+  );
+
+  const keyExtractor = (match: IMatch) => match.id.toString();
+
+  const emptyMessage = search ? 'No matches found for your search' : 'No matches found';
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Matches</Text>
-      </View>
-      <View style={styles.search}>
-        <Input.Text
-          placeholder="Search for a match"
-          icon="search"
-          value={search}
-          onChangeText={(value) => setSearch(value)}
-        />
-      </View>
+      <PageHeader />
+      <SearchHeader searchValue={search} onSearchChange={setSearch} />
       <FlatList
         data={filteredMatches}
-        keyExtractor={(match) => match.id.toString()}
-        ListEmptyComponent={() => <Text style={styles.noContent}>No matches found</Text>}
-        renderItem={({ item }) => (
-          <View
-            style={styles.match}
-            key={item.id}
-          >
-            <View style={styles.info}>
-              <Image
-                source={{ uri: item.image }}
-                style={styles.photo}
-              />
-              <View style={styles.textInfo}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.text}>{item.email}</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.discord}
-              onPress={() => copyDiscordName(item.discord)}
-            >
-              <FontAwesome6
-                name="discord"
-                size={20}
-                color={theme.colors.neutral[100]}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderMatchItem}
+        ListEmptyComponent={<EmptyState message={emptyMessage} />}
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -124,7 +220,9 @@ const styles = StyleSheet.create({
   },
   noContent: {
     fontSize: 16,
-    color: theme.colors.neutral[100]
+    color: theme.colors.neutral[100],
+    textAlign: 'center',
+    marginTop: 32
   },
   match: {
     width: '100%',
@@ -134,12 +232,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 24,
-    borderRadius: 12
+    borderRadius: MATCH_BORDER_RADIUS,
+    marginBottom: 12
   },
   photo: {
-    width: 60,
-    height: 60,
-    borderRadius: 12
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: MATCH_BORDER_RADIUS
   },
   info: {
     gap: 16,
@@ -156,7 +255,7 @@ const styles = StyleSheet.create({
   },
   discord: {
     padding: 12,
-    borderRadius: 999,
+    borderRadius: DISCORD_BUTTON_RADIUS,
     backgroundColor: theme.colors.primary[400]
   },
   text: {
